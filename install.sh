@@ -233,6 +233,17 @@ if [ $INSTALL_FAIL2BAN -eq 0 ]; then
 fi
 
 # ==================================================================
+#  Open SSL
+# ==================================================================
+if ! is_package_installed mysql-server; then
+    apt-get --yes install openssl
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install openssl."
+        exit 1
+    fi
+fi
+
+# ==================================================================
 #  Quota
 # ==================================================================
 if [ $INSTALL_QUOTA -eq 0 ]; then
@@ -288,10 +299,42 @@ fi
 # ------------------------------------------------------------------
 #  PHP modules
 # ------------------------------------------------------------------
+if ! is_package_installed php-pear; then
+    apt-get --yes install php-pear
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install php-pear."
+        exit 1
+    fi
+fi
+
+if ! is_package_installed php5-cgi; then
+    apt-get --yes install php5-cgi
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install php5-cgi."
+        exit 1
+    fi
+fi
+
+if ! is_package_installed php5-cli; then
+    apt-get --yes install php5-cli
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install php5-cli."
+        exit 1
+    fi
+fi
+
 if ! is_package_installed php5-gd; then
     apt-get --yes install php5-gd
     if [ $? -ne 0 ]; then
         echo "Error: Failed to install php5-gd."
+        exit 1
+    fi
+fi
+
+if ! is_package_installed php5-imap; then
+    apt-get --yes install php5-imap
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install php5-imap."
         exit 1
     fi
 fi
@@ -320,6 +363,14 @@ if ! is_package_installed php5-mysql; then
     fi
 fi
 
+if ! is_package_installed php5-recode; then
+    apt-get --yes install php5-recode
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install php5-recode."
+        exit 1
+    fi
+fi
+
 # ==================================================================
 #  Apache
 # ==================================================================
@@ -343,6 +394,14 @@ if ! is_package_installed apache2-mpm-prefork; then
     apt-get --yes install apache2-mpm-prefork
 	if [ $? -ne 0 ]; then
         echo "Error: Failed to install apache2-mpm-prefork."
+        exit 1
+    fi
+fi
+
+if ! is_package_installed libapache2-mod-php5; then
+    apt-get --yes install libapache2-mod-php5
+	if [ $? -ne 0 ]; then
+        echo "Error: Failed to install libapache2-mod-php5."
         exit 1
     fi
 fi
