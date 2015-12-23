@@ -291,10 +291,10 @@ if ! is_package_installed php5-gd; then
     fi
 fi
 
-if ! is_package_installed php5-gettext; then
-    apt-get --yes install php5-gettext
+if ! is_package_installed php5-intl; then
+    apt-get --yes install php5-intl
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to install php5-gettext."
+        echo "Error: Failed to install php5-intl."
         exit 1
     fi
 fi
