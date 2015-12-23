@@ -386,6 +386,7 @@ fi
 # ------------------------------------------------------------------
 a2enmod rewrite
 a2enmod deflate
+a2enmod ssl
 
 if ! is_package_installed mod-pagespeed-stable; then
     a2enmod pagespeed
@@ -425,7 +426,7 @@ if [ ! -d /var/www/$HOSTNAME ]; then
         if [ -f /etc/apache2/sites-available/default-ssl ]; then
             # Instead of creating the directory we set a symbolic link
             if [ ! -d /var/www/$HOSTNAME/htsdocs ]; then
-                ln -s /var/www/$HOSTNAME/htsdocs /var/www/$HOSTNAME/
+                ln -s /var/www/$HOSTNAME/htdocs/ /var/www/$HOSTNAME/htsdocs
                 if [ $? -ne 0 ]; then
                     echo "Error: Failed to create /var/www/$HOSTNAME/htsdocs."
                     exit 1
