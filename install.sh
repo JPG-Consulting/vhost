@@ -35,6 +35,11 @@ if [[ $(id -u) -ne 0 ]]; then
 fi
 
 # ------------------------------------------------------------------
+#  Hostname
+# ------------------------------------------------------------------
+HOSTNAME=$(hostname -f);
+
+# ------------------------------------------------------------------
 #  Non Privileged user
 # ------------------------------------------------------------------
 if prompt_yn "Do you wish to add a non-privileged user?"; then
@@ -389,7 +394,7 @@ fi
 # ------------------------------------------------------------------
 #  Virtual hosting
 # ------------------------------------------------------------------
-if [ ! -d /var/www/$HOSTNME ]; then
+if [ ! -d /var/www/$HOSTNAME ]; then
     mkdir -p /var/www/$HOSTNAME/htdocs
     if [ $? -ne 0 ]; then
         echo "Error: Failed to create /var/www/$HOSTNAME/htdocs."
@@ -409,7 +414,7 @@ if [ ! -d /var/www/$HOSTNME ]; then
             cp /etc/apache2/sites-available/default /etc/apache2/sites-available/$HOSTNAME
             sed -i "s%/var/www%/var/www/${HOSTNAME}/htdocs%" /etc/apache2/sites-available/$HOSTNAME
 
-            if [ ! -f /etc/apache2/sites-available/$HOSTNAME ]; then
+            if [ -f /etc/apache2/sites-available/$HOSTNAME ]; then
                 rm /etc/apache2/sites-available/default
                 a2ensite $HOSTNAME
             fi
@@ -430,7 +435,7 @@ if [ ! -d /var/www/$HOSTNME ]; then
             a2dissite default-ssl
 
 		    cp /etc/apache2/sites-available/default /etc/apache2/sites-available/$HOSTNAME-ssl
-            sed -i "s%/var/www%/var/www/${HOSTNAME}/htsdocs%" /etc/apache2/sites-available/$HOSTNAME
+            sed -i "s%/var/www%/var/www/${HOSTNAME}/htsdocs%" /etc/apache2/sites-available/$HOSTNAME-ssl
             #SSLCertificateFile    /etc/ssl/certs/ssl-cert-snakeoil.pem
             #SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
 
