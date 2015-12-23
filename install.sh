@@ -425,7 +425,7 @@ if [ ! -d /var/www/$HOSTNAME ]; then
         if [ -f /etc/apache2/sites-available/default-ssl ]; then
             # Instead of creating the directory we set a symbolic link
             if [ ! -d /var/www/$HOSTNAME/htsdocs ]; then
-                ln -s /var/www/$HOSTNAME/htsdocs /var/www/$HOSTNAME/htdocs
+                ln -s /var/www/$HOSTNAME/htsdocs /var/www/$HOSTNAME/
                 if [ $? -ne 0 ]; then
                     echo "Error: Failed to create /var/www/$HOSTNAME/htsdocs."
                     exit 1
@@ -434,7 +434,7 @@ if [ ! -d /var/www/$HOSTNAME ]; then
 
             a2dissite default-ssl
 
-		    cp /etc/apache2/sites-available/default /etc/apache2/sites-available/$HOSTNAME-ssl
+		    cp /etc/apache2/sites-available/default-ssl /etc/apache2/sites-available/$HOSTNAME-ssl
             sed -i "s%/var/www%/var/www/${HOSTNAME}/htsdocs%" /etc/apache2/sites-available/$HOSTNAME-ssl
             #SSLCertificateFile    /etc/ssl/certs/ssl-cert-snakeoil.pem
             #SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
