@@ -235,10 +235,18 @@ fi
 # ==================================================================
 #  Open SSL
 # ==================================================================
-if ! is_package_installed mysql-server; then
+if ! is_package_installed openssl; then
     apt-get --yes install openssl
     if [ $? -ne 0 ]; then
         echo "Error: Failed to install openssl."
+        exit 1
+    fi
+fi
+
+if ! is_package_installed ssl-cert; then
+    apt-get --yes install ssl-cert
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install ssl-cert."
         exit 1
     fi
 fi
@@ -323,6 +331,14 @@ if ! is_package_installed php5-cli; then
     fi
 fi
 
+if ! is_package_installed php5-curl; then
+    apt-get --yes install php5-curl
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install php5-curl."
+        exit 1
+    fi
+fi
+
 if ! is_package_installed php5-gd; then
     apt-get --yes install php5-gd
     if [ $? -ne 0 ]; then
@@ -375,7 +391,7 @@ fi
 #  Apache
 # ==================================================================
 if ! is_package_installed apache2; then
-    apt-get --yes install apache2 apache2-utils
+    apt-get --yes install apache2
 	if [ $? -ne 0 ]; then
         echo "Error: Failed to install apache2."
         exit 1
@@ -534,8 +550,77 @@ if [ $INSTALL_AWSTATS -eq 0 ]; then
     fi
 fi
 
+# ==================================================================
+#  Postfix
+# ==================================================================
+echo "postfix postfix/mailname string $HOSTNAME" | debconf-set-selections
+echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
+if ! is_package_installed postfix; then
+    apt-get --yes install postfix postfix-mysql
+	if [ $? -ne 0 ]; then
+        echo "Error: Failed to install postfix."
+        exit 1
+    fi
+fi
 
+if ! is_package_installed postfix-mysql; then
+    apt-get --yes install postfix-mysql
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install postfix-mysql."
+        exit 1
+    fi
+fi
 
+# ==================================================================
+#  Dovecot
+# ==================================================================
+echo "dovecot-core dovecot-core/create-ssl-cert boolean true" | debconf-set-selections
+echo "dovecot-core dovecot-core/ssl-cert-name string $HOSTNAME" | debconf-set-selections
 
+if ! is_package_installed dovecot-core; then
+    apt-get --yes install dovecot-core dovecot-imapd dovecot-pop3d dovecot-lmtpd dovecot-mysql
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install dovecot."
+        exit 1
+    fi
+fi
 
+if ! is_package_installed dovecot-imapd; then
+    apt-get --yes install dovecot-imapd
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install dovecot-imapd."
+        exit 1
+    fi
+fi
+
+if ! is_package_installed dovecot-pop3d; then
+    apt-get --yes install dovecot-pop3d
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install dovecot-pop3d."
+        exit 1
+    fi
+fi
+
+if ! is_package_installed dovecot-lmtpd; then
+    apt-get --yes install dovecot-lmtpd
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install dovecot-lmtpd."
+        exit 1
+    fi
+fi
+
+if ! is_package_installed dovecot-mysql; then
+    apt-get --yes install dovecot-mysql
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install dovecot-mysql."
+        exit 1
+    fi
+fi
+
+# ==================================================================
+#  Finish
+# ==================================================================
+echo ""
+echo "Your server is now ready!"
+echo ""
