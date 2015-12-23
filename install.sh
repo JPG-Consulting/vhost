@@ -150,7 +150,7 @@ if [ ! -d /var/vmail ]; then
     fi
 fi
 
-if getent passwd vmail>/dev/null; then
+if ! getent passwd vmail>/dev/null; then
     adduser --system --home /var/vmail --uid 5000 --group --gid 5000 --disabled-login vmail
     if [ $? -ne 0 ]; then
         echo "Error: Failed to add user vmail."
