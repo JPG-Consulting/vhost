@@ -762,8 +762,8 @@ sed -i "s/^\s*user = vmail\s*$/user = $VIRTUALMAIL_USER_NAME/" /etc/dovecot/conf
 sed -i "/^ssl =.*$/d" /etc/dovecot/conf.d/10-ssl.conf
 sed -i "s/^#ssl =.*$/#ssl = yes\nssl = required/" /etc/dovecot/conf.d/10-ssl.conf
 
-chown -R $VIRTUALMAIL_USER_NAME:dovecot /etc/dovecot
-chmod -R o-rwx /etc/dovecot
+#chown -R $VIRTUALMAIL_USER_NAME:dovecot /etc/dovecot
+#chmod -R o-rwx /etc/dovecot
 
 service dovecot restart
 
@@ -821,7 +821,7 @@ EOF
 # ------------------------------------------------------------------
 #  File permission
 # ------------------------------------------------------------------
-chmod o= /etc/postfix/mysql-*
+#chmod o= /etc/postfix/mysql-*
 #chgrp postfix /etc/postfix/mysql-*
 
 # ------------------------------------------------------------------
