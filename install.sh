@@ -639,6 +639,16 @@ service apache2 restart
 #  PHPMyAdmin
 # ==================================================================
 if [ $INSTALL_PHPMYADMIN -eq 0 ]; then
+    echo "phpmyadmin phpmyadmin/dbconfig-install boolean true" | debconf-set-selections
+    echo "phpmyadmin phpmyadmin/mysql/admin-pass password $MYSQL_ROOT_PASSWORD" | debconf-set-selections
+    echo "phpmyadmin phpmyadmin/mysql/app-pass password $MYSQL_ROOT_PASSWORD" | debconf-set-selections
+    echo "phpmyadmin phpmyadmin/app-password-confirm password $MYSQL_ROOT_PASSWORD" | debconf-set-selections
+    echo "phpmyadmin phpmyadmin/password-confirm password $MYSQL_ROOT_PASSWORD" | debconf-set-selections
+    echo "phpmyadmin phpmyadmin/setup-password password $MYSQL_ROOT_PASSWORD" | debconf-set-selections
+    echo "phpmyadmin phpmyadmin/setup-username string root" | debconf-set-selections
+    echo "phpmyadmin phpmyadmin/db/app-user string root" | debconf-set-selections
+    echo "phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2" | debconf-set-selections
+
     apt-get --yes install phpmyadmin
     if [ $? -ne 0 ]; then
         echo "Error: Failed to install phpmyadmin."
