@@ -634,7 +634,7 @@ if [ $INSTALL_PROFTPD -eq 0 ]; then
     #  Backup the files we are going to change
     # --------------------------------------------------------------
     if [ ! -f /etc/proftpd/proftpd.conf.backup ]; then
-        cp /etc/proftpd/proftpd.conf etc/proftpd/proftpd.conf.backup
+        cp /etc/proftpd/proftpd.conf /etc/proftpd/proftpd.conf.backup
         if [ $? -ne 0 ]; then
             echo "Error: Failed to backup the coniguration file of proftpd."
             exit 1
