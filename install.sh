@@ -40,6 +40,13 @@ fi
 HOSTNAME=$(hostname -f);
 
 # ------------------------------------------------------------------
+#  Control Panel Database
+# ------------------------------------------------------------------
+MYSQL_CONTROLPANEL_DATABASE='psa'
+MYSQL_CONTROLPANEL_USER_NAME='psa'
+MYSQL_CONTROLPANEL_USER_PASSWORD='psa'
+
+# ------------------------------------------------------------------
 #  Non Privileged user
 # ------------------------------------------------------------------
 if prompt_yn "Do you wish to add a non-privileged user?"; then
@@ -135,13 +142,29 @@ else
 fi
 
 if ! is_package_installed apache2-suexec; then
-    if prompt_yn "Do you wish to install quota?"; then
+    if prompt_yn "Do you wish to install apache2 suexec?"; then
         INSTALL_APACHE2_SUEXEC=0
     else
         INSTALL_APACHE2_SUEXEC=1
     fi
 else
     INSTALL_APACHE2_SUEXEC=1
+fi
+
+if ! is_package_installed proftpd-basic; then
+    if prompt_yn "Do you wish to install proFTPd?"; then
+        INSTALL_PROFTPD=0
+    else
+        INSTALL_PROFTPD=1
+    fi
+elif ! is_package_installed proftpd-mod-mysql; then
+    if prompt_yn "Do you wish to install proFTPd?"; then
+        INSTALL_PROFTPD=0
+    else
+        INSTALL_PROFTPD=1
+    fi
+else
+    INSTALL_PROFTPD=1
 fi
 
 # ==================================================================
@@ -292,6 +315,38 @@ else
 
     service mysql start
 fi
+
+mysql -uroot -p$MYSQL_ROOT_PASSWORD $MYSQL_CONTROLPANEL_DATABASE <<EOF
+    DROP DATABASE IF EXISTS ${MYSQL_CONTROLPANEL_DATABASE};
+
+    CREATE DATABASE IF NOT EXISTS ${MYSQL_CONTROLPANEL_DATABASE}
+        DEFAULT CHARACTER SET=utf8
+        DEFAULT COLLATE=utf8_general_ci;
+
+    USE ${MYSQL_CONTROLPANEL_DATABASE};
+
+    CREATE TABLE IF NOT EXISTS domains (
+        id int(10) unsigned NOT NULL auto_increment;
+        name varchar(255) set ascii NOT NULL,
+        PRIMARY KEY (id),
+		UNIQUE KEY name (name)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci;
+
+    CREATE TABLE IF NOT EXISTS mail (
+	    id int(10) unsigned NOT NULL auto_increment;
+		mail_name varchar(245)  character set ascii NOT NULL,
+		domain_id int(10) unsigned NOT NULL,
+		PRIMARY KEY(id),
+		UNIQUE KEY dom_id (dom_id, mail_name),
+		FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci;
+
+    CREATE USER '${$MYSQL_CONTROLPANEL_USER_NAME}'@'localhost' IDENTIFIED BY '${MYSQL_CONTROLPANEL_USER_PASSWORD}';
+
+    GRANT ALL PRIVILEGES ON '${MYSQL_CONTROLPANEL_DATABASE}'.* TO '${MYSQL_CONTROLPANEL_USER_NAME}'@'localhost';
+
+    FLUSH PRIVILEGES;
+EOF
 
 # ==================================================================
 #  PHP
@@ -549,6 +604,43 @@ if [ $INSTALL_AWSTATS -eq 0 ]; then
         exit 1
     fi
 fi
+
+# ==================================================================
+#  ProFTPd
+# ==================================================================
+if [ $INSTALL_PROFTPD -eq 0 ]; then
+    if ! is_package_installed proftpd-basic; then
+        echo "proftpd-basic shared/proftpd/inetd_or_standalone select standalone" | debconf-set-selections
+
+        apt-get --yes install proftpd-basic
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to install proftpd-basic."
+            exit 1
+        fi
+    fi
+
+    if ! is_package_installed proftpd-mod-mysql; then
+        apt-get --yes install proftpd-mod-mysql
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to install proftpd-mod-mysql."
+            exit 1
+        fi
+    fi
+
+	# --------------------------------------------------------------
+    #  Backup the files we are going to change
+    # --------------------------------------------------------------
+    if [ ! -f /etc/proftpd/proftpd.conf.backup ]; then
+        cp /etc/proftpd/proftpd.conf etc/proftpd/proftpd.conf.backup
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to backup the coniguration file of proftpd."
+            exit 1
+        fi
+    fi
+fi
+
+
+
 
 # ==================================================================
 #  Postfix
