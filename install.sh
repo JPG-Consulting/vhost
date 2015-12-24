@@ -241,6 +241,8 @@ if [ -n "$USER_NAME" ]; then
 	if [ -f /etc/ssh/sshd_config ]; then
         sed -i "s/#PermitRootLogin yes/PermitRootLogin no/" /etc/ssh/sshd_config
         sed -i "s/PermitRootLogin yes/PermitRootLogin no/" /etc/ssh/sshd_config
+
+        service ssh restart
     fi
 fi
 
