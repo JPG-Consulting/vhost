@@ -328,25 +328,27 @@ mysql -uroot -p$MYSQL_ROOT_PASSWORD <<EOF
     USE $MYSQL_CONTROLPANEL_DATABASE;
 
     CREATE TABLE IF NOT EXISTS domains (
-        id int(10) unsigned NOT NULL auto_increment;
-        name varchar(255) set ascii NOT NULL,
+        id int(10) unsigned NOT NULL auto_increment,
+        name varchar(255) NOT NULL,
         PRIMARY KEY (id),
-		UNIQUE KEY name (name)
+        UNIQUE KEY name (name)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci;
 
     CREATE TABLE IF NOT EXISTS mail (
-	    id int(10) unsigned NOT NULL auto_increment;
-		mail_name varchar(245)  character set ascii NOT NULL,
-		domain_id int(10) unsigned NOT NULL,
-		password varchar(255) NULL,
-		PRIMARY KEY(id),
-		UNIQUE KEY dom_id (dom_id, mail_name),
-		FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
+        id int(10) unsigned NOT NULL auto_increment,
+        mail_name varchar(245)  character set ascii NOT NULL,
+        domain_id int(10) unsigned NOT NULL,
+        password varchar(255) NULL,
+        PRIMARY KEY(id),
+        UNIQUE KEY domain_id (domain_id, mail_name),
+        FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci;
 
-    CREATE USER '$MYSQL_CONTROLPANEL_USER_NAME'@'localhost' IDENTIFIED BY '$MYSQL_CONTROLPANEL_USER_PASSWORD';
+    DROP USER IF EXISTS $MYSQL_CONTROLPANEL_USER_NAME@'localhost';
 
-    GRANT ALL PRIVILEGES ON '$MYSQL_CONTROLPANEL_DATABASE'.* TO '$MYSQL_CONTROLPANEL_USER_NAME'@'localhost';
+    CREATE USER $MYSQL_CONTROLPANEL_USER_NAME@'localhost' IDENTIFIED BY '$MYSQL_CONTROLPANEL_USER_PASSWORD';
+
+    GRANT ALL PRIVILEGES ON $MYSQL_CONTROLPANEL_DATABASE.* TO $MYSQL_CONTROLPANEL_USER_NAME@'localhost';
 
     FLUSH PRIVILEGES;
 EOF
