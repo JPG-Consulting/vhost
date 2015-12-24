@@ -822,7 +822,7 @@ EOF
 #  File permission
 # ------------------------------------------------------------------
 chmod o= /etc/postfix/mysql-*
-chgrp postfix /etc/postfix/mysql-*
+#chgrp postfix /etc/postfix/mysql-*
 
 # ------------------------------------------------------------------
 #  Postfix configuration
