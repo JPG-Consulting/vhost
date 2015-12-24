@@ -160,6 +160,16 @@ else
     INSTALL_APACHE2_SUEXEC=1
 fi
 
+if ! is_package_installed phpmyadmin; then
+    if prompt_yn "Do you wish to install phpmyadmin?"; then
+        INSTALL_PHPMYADMIN=0
+    else
+        INSTALL_PHPMYADMIN=1
+    fi
+else
+    INSTALL_PHPMYADMIN=1
+fi
+
 if ! is_package_installed proftpd-basic; then
     if prompt_yn "Do you wish to install proFTPd?"; then
         INSTALL_PROFTPD=0
@@ -175,6 +185,8 @@ elif ! is_package_installed proftpd-mod-mysql; then
 else
     INSTALL_PROFTPD=1
 fi
+
+
 
 # ==================================================================
 #  Basic virtual mailbox settings
@@ -622,6 +634,17 @@ fi
 #  Restart the apache2 service
 # ------------------------------------------------------------------
 service apache2 restart
+
+# ==================================================================
+#  PHPMyAdmin
+# ==================================================================
+if [ $INSTALL_PHPMYADMIN -eq 0 ]; then
+    apt-get --yes install phpmyadmin
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install phpmyadmin."
+        exit 1
+    fi
+fi
 
 # ==================================================================
 #  AWStats
