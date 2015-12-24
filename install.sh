@@ -338,6 +338,7 @@ mysql -uroot -p$MYSQL_ROOT_PASSWORD $MYSQL_CONTROLPANEL_DATABASE <<EOF
 	    id int(10) unsigned NOT NULL auto_increment;
 		mail_name varchar(245)  character set ascii NOT NULL,
 		domain_id int(10) unsigned NOT NULL,
+		password varchar(255) NULL,
 		PRIMARY KEY(id),
 		UNIQUE KEY dom_id (dom_id, mail_name),
 		FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
