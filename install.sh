@@ -811,6 +811,10 @@ service dovecot restart
 echo "postfix postfix/mailname string $HOSTNAME" | debconf-set-selections
 echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
 
+if [ -f /etc/init.d/sendmail ]; then
+    service sendmail stop
+fi
+
 if ! is_package_installed postfix; then
     apt-get --yes install postfix postfix-mysql
 	if [ $? -ne 0 ]; then
