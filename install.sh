@@ -47,6 +47,15 @@ MYSQL_CONTROLPANEL_USER_NAME='psa'
 MYSQL_CONTROLPANEL_USER_PASSWORD='psa'
 
 # ------------------------------------------------------------------
+#  Virtual mail
+# ------------------------------------------------------------------
+VIRTUALMAIL_USER_NAME='vmail'
+VIRTUALMAIL_GROUP_NAME=$VIRTUALMAIL_USER_NAME
+VIRTUALMAIL_USER_ID=5000
+VIRTUALMAIL_GROUP_ID=5000
+VIRTUALMAIL_MBOXES_PATH='/var/vmail'
+
+# ------------------------------------------------------------------
 #  Non Privileged user
 # ------------------------------------------------------------------
 if prompt_yn "Do you wish to add a non-privileged user?"; then
@@ -170,25 +179,26 @@ fi
 # ==================================================================
 #  Basic virtual mailbox settings
 # ==================================================================
-if [ ! -d /var/vmail ]; then
-    mkdir /var/vmail
+if [ ! -d $VIRTUALMAIL_MBOXES_PATH ]; then
+    mkdir -p $VIRTUALMAIL_MBOXES_PATH
 	if [ $? -ne 0 ]; then
-        echo "Error: Failed to create /var/vmail."
+        echo "Error: Failed to create $VIRTUALMAIL_MBOXES_PATH."
         exit 1
     fi
 fi
 
-if ! getent passwd vmail>/dev/null; then
-    adduser --system --home /var/vmail --uid 5000 --group --disabled-login vmail
+if ! getent passwd $VIRTUALMAIL_USER_NAME>/dev/null; then
+    adduser --system --home $VIRTUALMAIL_MBOXES_PATH --uid $VIRTUALMAIL_USER_ID --group --disabled-login $VIRTUALMAIL_USER_NAME
     if [ $? -ne 0 ]; then
         echo "Error: Failed to add user vmail."
         exit 1
     fi
+	VIRTUALMAIL_GROUP_NAME=$VIRTUALMAIL_USER_NAME
 fi
 
-chown -R vmail:vmail /var/vmail
+chown -R $VIRTUALMAIL_USER_NAME:$VIRTUALMAIL_GROUP_NAME $VIRTUALMAIL_MBOXES_PATH
 if [ $? -ne 0 ]; then
-    echo "Error: Failed to set ownership for /var/vmail."
+    echo "Error: Failed to set ownership for $VIRTUALMAIL_MBOXES_PATH."
     exit 1
 fi
 
@@ -351,6 +361,15 @@ mysql -uroot -p$MYSQL_ROOT_PASSWORD <<EOF
         PRIMARY KEY(id),
         UNIQUE KEY domain_id (domain_id, mail_name),
         FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci;
+
+    CREATE TABLE IF NOT EXISTS mail_aliases (
+        id int(10) unsigned NOT NULL auto_increment,
+        mail_id int(10) unsigned NOT NULL,
+        alias varchar(255) NULL,
+        PRIMARY KEY(id),
+        UNIQUE KEY mail_id (mail_id, alias),
+        FOREIGN KEY (mail_id) REFERENCES mail(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci;
 
 	GRANT ALL PRIVILEGES ON $MYSQL_CONTROLPANEL_DATABASE.* TO $MYSQL_CONTROLPANEL_USER_NAME@localhost;
@@ -649,31 +668,6 @@ if [ $INSTALL_PROFTPD -eq 0 ]; then
     fi
 fi
 
-
-
-
-# ==================================================================
-#  Postfix
-# ==================================================================
-echo "postfix postfix/mailname string $HOSTNAME" | debconf-set-selections
-echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
-
-if ! is_package_installed postfix; then
-    apt-get --yes install postfix postfix-mysql
-	if [ $? -ne 0 ]; then
-        echo "Error: Failed to install postfix."
-        exit 1
-    fi
-fi
-
-if ! is_package_installed postfix-mysql; then
-    apt-get --yes install postfix-mysql
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to install postfix-mysql."
-        exit 1
-    fi
-fi
-
 # ==================================================================
 #  Dovecot
 # ==================================================================
@@ -712,6 +706,14 @@ if ! is_package_installed dovecot-lmtpd; then
     fi
 fi
 
+if ! is_package_installed dovecot-sieve; then
+    apt-get --yes install dovecot-sieve
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install dovecot-sieve."
+        exit 1
+    fi
+fi
+
 if ! is_package_installed dovecot-mysql; then
     apt-get --yes install dovecot-mysql
     if [ $? -ne 0 ]; then
@@ -719,6 +721,145 @@ if ! is_package_installed dovecot-mysql; then
         exit 1
     fi
 fi
+
+# ------------------------------------------------------------------
+#  Configure Dovecot
+# ------------------------------------------------------------------
+sed -i "s|^mail_location.*|mail_location = maildir:$VIRTUALMAIL_MBOXES_PATH/%d/%n|" /etc/dovecot/conf.d/10-mail.conf
+
+sed -i "s/^auth_mechanisms = plain.*$/auth_mechanisms = plain login/" /etc/dovecot/conf.d/10-auth.conf
+sed -i "s/^\!include auth-system.conf.ext/\#\!include auth-system.conf.ext/" /etc/dovecot/conf.d/10-auth.conf
+sed -i "s/^\#\!include auth-sql.conf.ext/\!include auth-sql.conf.ext/" /etc/dovecot/conf.d/10-auth.conf
+
+cat <<EOF > /etc/dovecot/conf.d/auth-sql.conf.ext
+passdb {
+  driver = sql
+  args = /etc/dovecot/dovecot-sql.conf.ext
+}
+userdb {
+  driver = static
+  args = uid=$VIRTUALMAIL_USER_NAME gid=$VIRTUALMAIL_GROUP_NAME home=$VIRTUALMAIL_MBOXES_PATH/%d/%n
+}
+EOF
+
+cp resources/dovecot/dovecot-sql.conf.ext /etc/dovecot/dovecot-sql.conf.ext
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to copy resources/dovecot/dovecot-sql.conf.ext to /etc/dovecot/dovecot-sql.conf.ext."
+    exit 1
+fi
+sed -i "s/^driver =.*$/driver = mysql/" /etc/dovecot/dovecot-sql.conf.ext
+sed -i "s/^connect =.*$/connect = host=127.0.0.1 dbname=$MYSQL_CONTROLPANEL_DATABASE user=$MYSQL_CONTROLPANEL_USER_NAME password=$MYSQL_CONTROLPANEL_USER_PASSWORD/" /etc/dovecot/dovecot-sql.conf.ext
+sed -i "s/^default_pass_scheme =.*$/default_pass_scheme = SHA512-CRYPT/" /etc/dovecot/dovecot-sql.conf.ext
+sed -i "s/^password_query =.*$/password_query = SELECT m.mail_name AS username, d.name AS domain, m.password AS password FROM mail m INNER JOIN domains d ON m.domain_id = d.id WHERE m.mail_name='%n' AND d.name='%d'/" /etc/dovecot/dovecot-sql.conf.ext
+
+cp resources/dovecot/10-master.conf /etc/dovecot/conf.d/10-master.conf
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to copy resources/dovecot/10-master.conf to /etc/dovecot/conf.d/10-master.conf."
+    exit 1
+fi
+sed -i "s/^\s*user = vmail\s*$/user = $VIRTUALMAIL_USER_NAME/" /etc/dovecot/conf.d/10-master.conf
+
+sed -i "/^ssl =.*$/d" /etc/dovecot/conf.d/10-ssl.conf
+sed -i "s/^#ssl =.*$/#ssl = yes\nssl = required/" /etc/dovecot/conf.d/10-ssl.conf
+
+chown -R $VIRTUALMAIL_USER_NAME:dovecot /etc/dovecot
+chmod -R o-rwx /etc/dovecot
+
+service dovecot restart
+
+# ------------------------------------------------------------------
+#  Restart dovecot
+# ------------------------------------------------------------------
+service dovecot restart
+
+# ==================================================================
+#  Postfix
+# ==================================================================
+echo "postfix postfix/mailname string $HOSTNAME" | debconf-set-selections
+echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
+
+if ! is_package_installed postfix; then
+    apt-get --yes install postfix postfix-mysql
+	if [ $? -ne 0 ]; then
+        echo "Error: Failed to install postfix."
+        exit 1
+    fi
+fi
+
+if ! is_package_installed postfix-mysql; then
+    apt-get --yes install postfix-mysql
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install postfix-mysql."
+        exit 1
+    fi
+fi
+
+cat <<EOF > /etc/postfix/mysql-virtual-mailbox-domains.cf
+user = $MYSQL_CONTROLPANEL_USER_NAME
+password = $MYSQL_CONTROLPANEL_USER_PASSWORD
+hosts = 127.0.0.1
+dbname = $MYSQL_CONTROLPANEL_DATABASE
+query = SELECT name AS virtual FROM domains WHERE name='%s'
+EOF
+
+cat <<EOF > /etc/postfix/mysql-virtual-mailbox-maps.cf
+user = $MYSQL_CONTROLPANEL_USER_NAME
+password = $MYSQL_CONTROLPANEL_USER_PASSWORD
+hosts = 127.0.0.1
+dbname = $MYSQL_CONTROLPANEL_DATABASE
+query = SELECT CONCAT(m.mail_name, '@', d.name) AS email FROM mail m INNER JOIN domains d ON m.domain_id = d.id WHERE m.mail_name='%u' AND d.name='%d'
+EOF
+
+cat <<EOF > /etc/postfix/mysql-virtual-alias-maps.cf
+user = $MYSQL_CONTROLPANEL_USER_NAME
+password = $MYSQL_CONTROLPANEL_USER_PASSWORD
+hosts = 127.0.0.1
+dbname = $MYSQL_CONTROLPANEL_DATABASE
+query =  SELECT CONCAT(m.mail_name, '@', d.name) AS destination FROM mail_aliases a INNER JOIN mail m ON a.mail_id = m.id INNER JOIN domains d ON m.domain_id = d.id WHERE a.alias='%u' AND d.name='%d'
+EOF
+
+# ------------------------------------------------------------------
+#  File permission
+# ------------------------------------------------------------------
+chmod o= /etc/postfix/mysql-*
+chgrp postfix /etc/postfix/mysql-*
+
+# ------------------------------------------------------------------
+#  Postfix configuration
+# ------------------------------------------------------------------
+postconf -e "mydestination = localhost"
+postconf -e "virtual_mailbox_domains = mysql:/etc/postfix/mysql-virtual-mailbox-domains.cf"
+postconf -e "virtual_mailbox_maps = mysql:/etc/postfix/mysql-virtual-mailbox-maps.cf"
+postconf -e "virtual_alias_maps = mysql:/etc/postfix/mysql-virtual-alias-maps.cf"
+postconf -e "smtpd_recipient_restrictions = permit_sasl_authenticated,permit_mynetworks,reject_unauth_destination" 
+
+postconf -e "smtpd_tls_cert_file=/etc/dovecot/dovecot.pem"
+postconf -e "smtpd_tls_key_file=/etc/dovecot/private/dovecot.pem"
+postconf -e "smtpd_use_tls=yes"
+postconf -e "smtpd_tls_auth_only = yes"
+
+postconf -e "smtpd_sasl_type = dovecot"
+postconf -e "smtpd_sasl_path = private/auth"
+postconf -e "smtpd_sasl_auth_enable = yes"
+
+postconf -e "virtual_transport = lmtp:unix:private/dovecot-lmtp"
+
+sed -i "s/#submission inet n       -       -       -       -       smtpd/submission inet n       -       -       -       -       smtpd/" /etc/postfix/master.cf
+sed -i "s/#  -o syslog_name=postfix\/submission/  -o syslog_name=postfix\/submission/" /etc/postfix/master.cf
+sed -i "s/#  -o smtpd_tls_security_level=encrypt/  -o smtpd_tls_security_level=encrypt/" /etc/postfix/master.cf
+sed -i "s/#  -o smtpd_sasl_auth_enable=yes/  -o smtpd_sasl_auth_enable=yes/" /etc/postfix/master.cf
+sed -i "s/#  -o smtpd_client_restrictions=permit_sasl_authenticated,reject/  -o smtpd_client_restrictions=permit_sasl_authenticated,reject/" /etc/postfix/master.cf
+sed -i "s/#smtps     inet  n       -       -       -       -       smtpd/smtps     inet  n       -       -       -       -       smtpd/" /etc/postfix/master.cf
+sed -i "s/#  -o syslog_name=postfix\/smtps/  -o syslog_name=postfix\/smtps/" /etc/postfix/master.cf
+sed -i "s/#  -o smtpd_tls_wrappermode=yes/  -o smtpd_tls_wrappermode=yes/" /etc/postfix/master.cf
+sed -i "s/#  -o smtpd_sasl_auth_enable=yes/  -o smtpd_sasl_auth_enable=yes/" /etc/postfix/master.cf
+sed -i "s/#  -o smtpd_client_restrictions=permit_sasl_authenticated,reject/  -o smtpd_client_restrictions=permit_sasl_authenticated,reject/" /etc/postfix/master.cf
+
+# ------------------------------------------------------------------
+#  Restart postfix and dovecot
+# ------------------------------------------------------------------
+service postfix restart
+service dovecot restart
 
 # ==================================================================
 #  Finish
