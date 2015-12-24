@@ -318,6 +318,15 @@ else
     service mysql start
 fi
 
+# User creation is separated as there is no IF EXISTS prior to mySQL 5.7.6! Therefore this may fail if the user exist
+mysql -uroot -p$MYSQL_ROOT_PASSWORD <<EOF
+    CREATE USER $MYSQL_CONTROLPANEL_USER_NAME@localhost IDENTIFIED BY '$MYSQL_CONTROLPANEL_USER_PASSWORD';
+
+    GRANT USAGE ON *.* TO $MYSQL_CONTROLPANEL_USER_NAME@localhost;
+
+    FLUSH PRIVILEGES;
+EOF
+
 mysql -uroot -p$MYSQL_ROOT_PASSWORD <<EOF
     DROP DATABASE IF EXISTS $MYSQL_CONTROLPANEL_DATABASE;
 
@@ -344,15 +353,7 @@ mysql -uroot -p$MYSQL_ROOT_PASSWORD <<EOF
         FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci;
 
-EOF
-
-# User creation is separated as there is no IF EXISTS prior to mySQL 5.7.6! Therefore this may fail if the user exist
-mysql -uroot -p$MYSQL_ROOT_PASSWORD <<EOF
-    CREATE USER $MYSQL_CONTROLPANEL_USER_NAME@localhost IDENTIFIED BY '$MYSQL_CONTROLPANEL_USER_PASSWORD';
-
-    GRANT USAGE ON *.* TO $MYSQL_CONTROLPANEL_USER_NAME@localhost;
-
-    GRANT ALL PRIVILEGES ON $MYSQL_CONTROLPANEL_DATABASE.* TO $MYSQL_CONTROLPANEL_USER_NAME@localhost;
+	GRANT ALL PRIVILEGES ON $MYSQL_CONTROLPANEL_DATABASE.* TO $MYSQL_CONTROLPANEL_USER_NAME@localhost;
 
     FLUSH PRIVILEGES;
 EOF
