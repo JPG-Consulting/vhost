@@ -421,7 +421,7 @@ EOF
 if [ -n "$USER_NAME" ]; then
     USER_GID=$(id -u $USER_NAME)
     if [ $? -eq 0 ]; then
-        mysql -uroot -p$MYSQL_ROOT_PASSWORD $MYSQL_CONTROLPANEL_DATABASE -e "INSERT INTO sys_groups (ugid, groupname, members) VALUES ('$USER_GID', '$USER_GID', NULL);"
+        mysql -uroot -p$MYSQL_ROOT_PASSWORD $MYSQL_CONTROLPANEL_DATABASE -e "INSERT INTO sys_groups (gid, groupname, members) VALUES ('$USER_GID', '$USER_GID', NULL);"
         if [ $? -ne 0 ]; then
             echo "Error: Failed to add $USER_NAME to sys_groups table."
             exit 1
