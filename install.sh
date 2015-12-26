@@ -421,7 +421,7 @@ EOF
 if [ -n "$USER_NAME" ]; then
     USER_GID=$(id -u $USER_NAME)
     if [ $? -eq 0 ]; then
-        mysql -uroot -p$MYSQL_ROOT_PASSWORD $MYSQL_CONTROLPANEL_DATABASE -e "INSERT INTO sys_groups (gid, groupname, members) VALUES ('$USER_GID', '$USER_GID', NULL);"
+        mysql -uroot -p$MYSQL_ROOT_PASSWORD $MYSQL_CONTROLPANEL_DATABASE -e "INSERT INTO sys_groups (gid, groupname, members) VALUES ('$USER_GID', '$USER_GID', '');"
         if [ $? -ne 0 ]; then
             echo "Error: Failed to add $USER_NAME to sys_groups table."
             exit 1
@@ -1009,7 +1009,7 @@ EOF
     sed -i 's|#LoadModule mod_sql.c|LoadModule mod_sql.c|g' /etc/proftpd/modules.conf
     sed -i 's|#LoadModule mod_sql_mysql.c|LoadModule mod_sql_mysql.c|g' /etc/proftpd/modules.conf
 
-    mysql -uroot -p$MYSQL_ROOT_PASSWORD $MYSQL_CONTROLPANEL_DATABASE -e "INSERT INTO sys_groups (groupname, gid, members) VALUES ('$FTP_GROUP_NAME', '$FTP_GROUP_ID', NULL);"
+    mysql -uroot -p$MYSQL_ROOT_PASSWORD $MYSQL_CONTROLPANEL_DATABASE -e "INSERT INTO sys_groups (groupname, gid, members) VALUES ('$FTP_GROUP_NAME', '$FTP_GROUP_ID', '');"
 
 	service proftpd restart
 fi
