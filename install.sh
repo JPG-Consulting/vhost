@@ -694,7 +694,7 @@ if [ ! -d /usr/share/phpanel/public ]; then
 fi
 
 if [ ! -f /etc/apache2/conf.d/phpanel.conf ]; then
-    cat <<EOF > /etc/apache2/conf.d/phpanel.conf
+    cat << EOF > /etc/apache2/conf.d/phpanel.conf
 <IfModule mod_ssl.c>
     Listen 8443
     <VirtualHost _default_:8443>
