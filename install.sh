@@ -954,7 +954,7 @@ if [ $INSTALL_PROFTPD -eq 0 ]; then
     fi
 
     if ! getent passwd $FTP_USER_NAME>/dev/null; then
-        adduser --system --home /var/www --uid $FTP_UUSER_ID --ingroup $FTP_GROUP_NAME --disabled-login $FTP_USER_NAME
+        adduser --system --home /var/www --uid $FTP_UUSER_ID --ingroup $FTP_GROUP_ID --disabled-login $FTP_USER_NAME
         if [ $? -ne 0 ]; then
             echo "Error: Failed to add user $FTP_USER_NAME."
             exit 1
