@@ -25,6 +25,39 @@ function prompt_yn() {
     done
 }
 
+function get_group_id()
+{
+    local __resultvar=$2
+    local group_id=$(getent group $1 | cut -d: -f3);
+    if [ $? -eq 0 ]; then
+        if [ -z "$group_id" ]; then
+            if [[ "$__resultvar" ]]; then
+                eval $__resultvar=""
+            else
+                echo ""
+            fi
+        elif [ "$group_id" -eq "$group_id" ] 2>/dev/null; then
+            if [[ "$__resultvar" ]]; then
+                eval $__resultvar="'$group_id'"
+            else
+                echo "$group_id"
+            fi
+        else
+            if [[ "$__resultvar" ]]; then
+                eval $__resultvar=""
+            else
+                echo ""
+            fi
+        fi
+    else
+        if [[ "$__resultvar" ]]; then
+            eval $__resultvar=""
+        else
+            echo ""
+        fi
+
+    fi
+}
 
 # ==================================================================
 #  Main entry point
@@ -62,6 +95,8 @@ FTP_GROUP_NAME='ftpgroup'
 FTP_GROUP_ID=2001
 FTP_USER_NAME='ftpuser'
 FTP_USER_ID=2001
+#PROFTPD_SETTINGS
+PROFTPD_SQL_MIN_GID=500
 
 # ------------------------------------------------------------------
 #  Non Privileged user
@@ -393,9 +428,9 @@ mysql -uroot -p$MYSQL_ROOT_PASSWORD <<EOF
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci;
 
     CREATE TABLE IF NOT EXISTS sys_groups (
-	    gid smallint(6) NOT NULL DEFAULT '$FTP_GROUP_ID',
         groupname varchar(16) NOT NULL,
-        members varchar(16) NOT NULL,
+        gid smallint(6) NOT NULL DEFAULT '$FTP_GROUP_ID',
+        members varchar(16),
         KEY groupname (groupname)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
@@ -616,6 +651,23 @@ fi
 # ------------------------------------------------------------------
 #  Virtual hosting
 # ------------------------------------------------------------------
+GROUP_WWW_DATA_GID=$(get_group_id www-data)
+if [ -n "$GROUP_WWW_DATA_GID" ]; then
+    mysql -u$MYSQL_CONTROLPANEL_USER_NAME -p$MYSQL_CONTROLPANEL_USER_PASSWORD $MYSQL_CONTROLPANEL_DATABASE -e "INSERT INTO sys_groups (groupname, gid, members) VALUES ('www-data', $GROUP_WWW_DATA_GID, '');"
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to add group www-data to database."
+        exit 1
+    fi
+
+    chgrp -R www-data /var/www
+    chmod 775 -R /var/www
+    chmod g+s /var/www
+
+    if [ $GROUP_WWW_DATA_GID -lt $PROFTPD_SQL_MIN_GID ]; then
+        PROFTPD_SQL_MIN_GID=$GROUP_WWW_DATA_GID
+    fi
+fi
+
 if [ ! -d /var/www/$HOSTNAME ]; then
     mkdir -p /var/www/$HOSTNAME/htdocs
     if [ $? -ne 0 ]; then
@@ -829,7 +881,7 @@ SQLUserInfo sys_users userid passwd uid gid homedir shell
 SQLGroupInfo sys_groups groupname gid members
 
 # set min UID and GID - otherwise these are 999 each
-SQLMinID        500
+SQLMinUserGID   $PROFTPD_SQL_MIN_GID
 
 RootLogin off
 RequireValidShell off
